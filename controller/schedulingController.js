@@ -52,7 +52,6 @@ const scheduleOrder = async (order, recommendations) => {
 
 
 // Find all available machines for the given stage operation
-// const machines = await Machine.find({ operation: stage.stageName, isAvailable: true });
 const machines = await Machine.find({
   operation: { $regex: new RegExp(`^${stage.stageName}$`, 'i') },
   isAvailable: true
@@ -70,6 +69,7 @@ if (!Array.isArray(machines) || machines.length === 0) {
 // Loop through each machine and schedule it
 let quantityLeft = remainingQuantity - totalCompletedQty; // Remaining quantity to schedule
 let batchStartTime = new Date(stageStartTime);
+let totalBatchesForStage = 0; // Track total batches for the stage
 
 for (let machine of machines) {
   // Calculate the total hours required for the current machine
@@ -97,6 +97,9 @@ for (let machine of machines) {
   }
 
   // Schedule batches for the current machine
+// Log total batches scheduled for this stage
+let totalBatchesScheduledForMachine = 0; // Initialize total batches for the current machine
+
   while (quantityLeft > 0) {
     const scheduleQty = Math.min(quantityLeft, stage.minQtyForNextStage);
     const batchHours =
@@ -119,13 +122,19 @@ for (let machine of machines) {
 
     await scheduleEntry.save();
     quantityLeft -= scheduleQty;
-    batchStartTime = new Date(batchEndTime); // Update batch start time for next batch
+    batchStartTime = new Date(batchEndTime);     // Update batch start time for next batch
+    totalBatchesScheduledForMachine += 1; // Count the batch for this machine
+    totalBatchesForStage += 1; // Count the batch for the stage
+ 
   }
+// Log total batches scheduled for this machine
+console.log(`Total Batches Scheduled for Machine: ${machine.machineName} - ${totalBatchesScheduledForMachine} (Order: ${order.orderNumber})`);
 
-  // If all quantity is scheduled, break out of the loop
+// If all quantity is scheduled, break out of the loop
   if (quantityLeft <= 0) break;
 }
-
+// Log total batches scheduled for this stage
+console.log(`Total Batches Scheduled for Stage: ${stage.stageName} - ${totalBatchesForStage} (Order: ${order.orderNumber})`);
 // Update stageStartTime for the next stage
 stageStartTime = new Date(batchStartTime);
   }};
@@ -138,6 +147,3 @@ const getScheduleByOrder = async (orderId) => {
 };
 
 module.exports = { autoSchedule, getScheduleByOrder };
-
-
-
