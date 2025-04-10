@@ -146,4 +146,6 @@ const getScheduleByOrder = async (orderId) => {
   return schedules;
 };
 
-module.exports = { autoSchedule, getScheduleByOrder };
+
+
+module.exports = { autoSchedule, getScheduleByOrder};

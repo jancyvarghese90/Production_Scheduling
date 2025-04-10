@@ -2,7 +2,8 @@
 const express = require('express');
 const router = express.Router();
 const schedulingController = require('../controller/schedulingController');
-
+const   Schedule = require('../models/Schedule');
+const Order = require('../models/Order');
 // Route to automatically schedule orders based on priority, delivery date, and order quantity
 router.post('/auto-schedule', async (req, res) => {
   try {
@@ -26,4 +27,30 @@ router.get('/schedule/:orderId', async (req, res) => {
   }
 });
 
+router.put('/edit/:id',async (req, res) => {
+ try {
+    const scheduleId = req.params.id;
+    const updateData = req.body;
+
+    const schedule = await Schedule.findById(scheduleId);
+    if (!schedule) return res.status(404).json({ message: 'Schedule not found.' });
+
+    const order = await Order.findById(schedule.orderID);
+    if (!order) return res.status(404).json({ message: 'Related order not found.' });
+
+    if (order.isNonChangeable) {
+      return res.status(403).json({
+        message: `❌ Order ${order.orderNumber} is locked for editing.`,
+      });
+    }
+
+    const updated = await Schedule.findByIdAndUpdate(scheduleId, updateData, { new: true });
+    res.status(200).json(updated);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+
+});
 module.exports = router;
