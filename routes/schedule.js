@@ -1,13 +1,13 @@
 // routes/schedule.js
 const express = require('express');
 const router = express.Router();
-const schedulingController = require('../controller/schedulingController');
 const   Schedule = require('../models/Schedule');
-const Order = require('../models/Order');
+const {autoSchedule,getScheduleByOrder} = require('../controller/autoSchedulingRecOrderUpdate'); // Import the scheduling controller
+// const Order = require('../models/Order');
 // Route to automatically schedule orders based on priority, delivery date, and order quantity
 router.post('/auto-schedule', async (req, res) => {
   try {
-    const recommendations = await schedulingController.autoSchedule();
+    const recommendations = await autoSchedule();
     res.status(200).json({ message: 'Auto-scheduling completed successfully', recommendations });
   } catch (error) {
     console.error(error);
@@ -15,11 +15,20 @@ router.post('/auto-schedule', async (req, res) => {
   }
 });
 
+router.get("/schedule", async (req, res) => {
+  try {
+    var data = await Schedule.find();
+    res.status(200).json(data);
+  } catch (error) {
+    res.send("unable to find data");
+  }
+});
+
 // Route to get schedule for a specific order ID
 router.get('/schedule/:orderId', async (req, res) => {
   const { orderId } = req.params;
   try {
-    const schedules = await schedulingController.getScheduleByOrder(orderId);
+    const schedules = await getScheduleByOrder(orderId);
     res.status(200).json({ schedules });
   } catch (error) {
     console.error(error);

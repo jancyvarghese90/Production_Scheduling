@@ -23,28 +23,26 @@ const recommendationSchema = new mongoose.Schema({
 });
 
 
-
-
-
 const scheduleSchema = new mongoose.Schema({
   orderID: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', required: true },
-  machineID: { type: mongoose.Schema.Types.ObjectId, ref: 'Machine', required: true },
+  machineID: { type: mongoose.Schema.Types.ObjectId, ref: 'Machine' },
   stageName: { type: String, required: true }, // e.g., "TUFTING", "CUTTING"
   
   scheduledStart: { type: Date, required: true },
   scheduledEnd: { type: Date, required: true },
 
   quantity: { type: Number, required: true }, // Quantity to be produced in this stage
-  uom: { type: String, required: true },      // e.g., "KGS", "PCS"
+  uom: { type: String},      // e.g., "KGS", "PCS"
 
   status: {
     type: String,
-    enum: ['Scheduled', 'In Progress', 'Completed', 'Outsourced', 'Pending Approval'],
+    enum: ['Scheduled', 'In Progress', 'Completed', 'Rejected', 'Pending Approval'],
     default: 'Scheduled'
   },
 
   isManualApprovalRequired: { type: Boolean, default: false },
   isApproved: { type: Boolean, default: false },
+  
   recommendation: recommendationSchema, // 👈 Embedded Recommendation here
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }

@@ -1,0 +1,149 @@
+const axios = require('axios');
+const Schedule = require('../models/Schedule');
+const BOM = require('../models/BOM');
+
+// Fetch data from third-party APIs
+const fetchOrders = async () => {
+  const response = await axios.get('https://kera-internship.onrender.com/order');
+  return response.data;
+};
+
+const fetchMachines = async () => {
+  
+  const response = await axios.get('https://kera-internship.onrender.com/schedule');
+  console.log('📊 Total machines fetched:', response.length);
+console.log('📋 Sample machine data:', response[0]);
+  return response.data; // Fetching machine data from the API
+};
+
+// Helper function to create recommendation entries
+const createRecommendation = (type, reason) => {
+  return {
+    type,
+    reason,
+    suggestedBy: 'System',
+    createdAt: new Date(),
+  };
+};
+
+// Auto-schedule production orders
+const autoSchedule = async () => {
+  const orders = await fetchOrders();
+  const machines = await fetchMachines(); // Fetch machines from API
+  const recommendations = [];
+
+  // Loop through orders that are pending and sort by priority and delivery date
+  const sortedOrders = orders
+    .filter(order => order.status && typeof order.status === 'string' && order.status.toLowerCase() === 'pending')
+    .sort((a, b) => a.priority - b.priority || new Date(a.deliveryDate) - new Date(b.deliveryDate));
+
+  for (let order of sortedOrders) {
+    if (order.isNonChangeable) {
+      recommendations.push(createRecommendation('Manual Approval', `Order ${order.orderId} is non-changeable and cannot be rescheduled.`));
+      continue;
+    }
+
+    await scheduleOrder(order, recommendations, machines);
+  }
+
+  return recommendations;
+};
+
+// Function to schedule each order stage-by-stage
+const scheduleOrder = async (order, recommendations, machines) => {
+  const bom = await BOM.findOne({ outputItem: { $regex: new RegExp(`^${order.item}$`, 'i') } });
+
+  if (!bom || !bom.stages || bom.stages.length === 0) {
+    console.warn(`⚠️ No BOM found for item: ${order.item}`);
+    return;
+  }
+
+  for (let stage of bom.stages) {
+    console.log(`🔧 Processing stage: ${stage.stageName} | BatchSize: ${stage.minQtyForNextStage} | OrderQty: ${order.quantity} | UnitMaterial: ${stage.unitMaterialPerProduct}`);
+
+    const batchSize = stage.minQtyForNextStage;
+    let remainingQuantity = order.quantity * stage.unitMaterialPerProduct; // Total material required for this stage
+    const totalBatches = Math.ceil(remainingQuantity / batchSize); // Calculate the total number of batches required for this stage
+
+    // let stageStartTime = new Date(); // Start time for this stage (can be adjusted as needed)
+    console.log(`📦 Scheduling ${stage.stageName} in ${totalBatches} batches...`);
+
+    // Now loop through the batches for this stage
+    let lastBatchEndTime = new Date(); // Initialize last batch end time
+    for (let batch = 1; batch <= totalBatches; batch++) {
+      let machineAssigned = false; // Assume no machine is assigned initially
+
+      // Loop through all available machines
+            //  const availableMachines= machines.filter(m => m.process === stage.stageName && m.status === "Idle")) {
+
+      for (const machine of machines.filter(m => m.process === stage.stageName && m.status === "Idle")) {
+    //   console.log(`🔧 Checking machine: ${machine.machineId} for stage: ${stage.stageName}`);
+    // console.log("🔍 Order Object:", order);
+        // Check if the machine is available for the required time
+      
+    const batchStart = new Date(lastBatchEndTime);
+        const batchEnd = new Date(batchStart.getTime() + stage.hoursRequiredMinQty * 60 * 60 * 1000);
+
+        // Try to assign the batch to the machine
+        const scheduledQuantity = Math.min(batchSize, remainingQuantity);
+
+        const newSchedule = new Schedule({
+          orderID: order._id,
+          stageName: stage.stageName,
+          machineID: machine._id,
+          scheduledStart: batchStart,
+          scheduledEnd: batchEnd,
+          status: 'Scheduled',
+          batchNumber: batch,
+          quantity: scheduledQuantity,
+        });
+
+        await newSchedule.save();
+        console.log(`✅ Scheduled ${stage.stageName} - Batch ${batch} from ${batchStart} to ${batchEnd} on Machine ${machine.machineName} | Quantity: ${scheduledQuantity}`);
+
+        remainingQuantity -= scheduledQuantity;
+        lastBatchEndTime = new Date(batchEnd);
+        machineAssigned = true; // Successfully assigned the machine, no need to check further
+        break; // Exit the loop since we only need to schedule this batch on one machine
+      }
+
+      // If no machine was assigned after checking all, create a recommendation to outsource
+      if (!machineAssigned) {
+        const recommendation = createRecommendation('Outsource', `No available machine could be assigned for ${stage.stageName}, batch ${batch}`);
+        recommendations.push(recommendation);
+
+        // Create a pending schedule to trigger manual approval workflow
+        const pendingSchedule = new Schedule({
+          orderID: order._id,
+          machineID: null, // No machine assigned
+          stageName: stage.stageName,
+          scheduledStart: new Date(),
+          scheduledEnd: new Date(),
+          quantity: 0,
+          status: 'Pending Approval',
+          isManualApprovalRequired: true,
+          recommendation,
+        });
+
+        await pendingSchedule.save();
+        console.warn(`⚠️ No machine assigned for ${stage.stageName} - Batch ${batch}. Marked for approval.`);
+      }
+
+      // If all material for the stage is processed, exit the loop
+      if (remainingQuantity <= 0) {
+        console.log(`🎉 All material processed for ${stage.stageName}`);
+        break; // Exit the loop since all material has been processed
+      }
+    }
+  }
+};
+
+// Get schedules for a specific order ID
+const getScheduleByOrder = async (orderId) => {
+  const schedules = await Schedule.find({ orderID: orderId })
+    .populate('machineID')
+    .populate('orderID');
+  return schedules;
+};
+
+module.exports = { autoSchedule, getScheduleByOrder };

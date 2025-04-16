@@ -54,6 +54,7 @@ const bomData = {
         { code: 'RM-CAPFS', qty: 0.0033, uom: 'KGS' },
         { code: 'RM-LTXCMPD', qty: 0.0088, uom: 'KGS' },
       ],
+      unitMaterialPerProduct: 1.646, // Example value, adjust as needed
     },
     {
       sequenceNo: 2,
@@ -65,6 +66,7 @@ const bomData = {
         { code: 'RM-LM-JN13', qty: 1, uom: 'SQM' },
         { code: 'RMCY01', qty: 2.6548, uom: 'KGS' },
       ],
+      unitMaterialPerProduct:0.36233,
     },
     {
       sequenceNo: 3,
@@ -72,7 +74,9 @@ const bomData = {
       minQtyForNextStage: 200,
       hoursRequiredMinQty: 0.5,
       components: [{ code: 'BLLBMR1.887015', qty: 0.3621, uom: 'SQM' }],
+      unitMaterialPerProduct: 0.36233,
     },
+    
     {
       sequenceNo: 4,
       stageName: 'PRINTING',
@@ -91,6 +95,7 @@ const bomData = {
         { code: 'KAPFDBL', qty: 0.0257, uom: 'KGS' },
         { code: 'KADBBK', qty: 0.0129, uom: 'KGS' },
       ],
+      unitMaterialPerProduct: 1,
     },
     {
       sequenceNo: 5,
@@ -105,6 +110,7 @@ const bomData = {
         { code: 'PKG-SF-LD-29', qty: 0.0298, uom: 'KGS' },
         { code: 'PKG-TP-15', qty: 2, uom: 'NOS' },
       ],
+      unitMaterialPerProduct: 1,
     },
   ],
 };
