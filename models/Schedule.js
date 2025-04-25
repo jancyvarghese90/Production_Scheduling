@@ -10,6 +10,7 @@
 //   module.exports = mongoose.model('Schedule', scheduleSchema);
   
 const mongoose = require('mongoose');
+const Order = require('./Order');
 
 const recommendationSchema = new mongoose.Schema({
   type: {
@@ -25,7 +26,9 @@ const recommendationSchema = new mongoose.Schema({
 
 const scheduleSchema = new mongoose.Schema({
   orderID: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', required: true },
+ orderNumber: { type: String }, // e.g., "1001"
   machineID: { type: mongoose.Schema.Types.ObjectId, ref: 'Machine' },
+  machineName: { type: String }, // e.g., "Machine A", "Machine B"
   stageName: { type: String, required: true }, // e.g., "TUFTING", "CUTTING"
   
   scheduledStart: { type: Date, required: true },
