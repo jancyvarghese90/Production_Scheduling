@@ -158,7 +158,9 @@ const scheduleOrder = async (order, recommendations, machines) => {
   // Calculate when this stage’s minimum batch is done
     // const minQtyEndTime = new Date(lastStageMinQtyEndTime.getTime() + minQtyTime * 60 * 60 * 1000);
         // lastStageMinQtyEndTime = minQtyEndTime; // Update lastStageMinQtyEndTime for the next stage
-    let scheduledStart = new Date(lastStageMinQtyEndTime)
+    // let scheduledStart = new Date(lastStageMinQtyEndTime)
+     // For the first stage, start at the current time
+     let scheduledStart = (stageIndex === 0) ? new Date() : new Date(lastStageMinQtyEndTime); 
 
     // Compute total hours for the entire quantity
     const totalHours = fullQuantity * timePerUnit;
@@ -229,7 +231,7 @@ const scheduleOrder = async (order, recommendations, machines) => {
     }
 
     finalScheduledEnd = scheduledEnd;
-    lastStageMinQtyEndTime = scheduledEnd;
+    lastStageMinQtyEndTime = minQtyEndTime;
   }
 
   // NEW: check against delivery date
