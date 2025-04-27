@@ -28,7 +28,7 @@ const scheduleOrder = async (order, recommendations) => {
   console.log(bom?.stages);
   if (!bom || !bom.stages || bom.stages.length === 0) return;
 
-  let remainingQuantity = order.quantity;
+  let remainingQuantity = order.quantity* bom.unitMaterialPerProduct; // Total quantity to be scheduled
   let stageStartTime = new Date(); // Starting time for the first stage
 
   for (let stage of bom.stages) {

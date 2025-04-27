@@ -20,10 +20,10 @@ router.post("/add", async (req, res) => {
     var data = await orderModel(item).save();
 
     console.log("✅ Data saved to database:", data); // Log the saved data
-    res.status(200).send({ message: "Data added", data });
+    res.status(200).json({ message: "Data added", data });
   } catch (error) {
     console.error("❌ Error saving data:", error.message); // Log the error
-    res.status(500).send("Couldn't add data");
+    res.status(500).json("Couldn't add data");
   }
 });
 

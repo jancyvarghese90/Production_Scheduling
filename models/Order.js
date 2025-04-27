@@ -27,7 +27,7 @@ const orderSchema = new mongoose.Schema({
   isNonChangeable: { type: Boolean, default: false },            // For scheduling lock
   // startDate: { type: Date },                                     // Optional scheduling start
   status: { type: String, enum: ['Pending', 'Scheduled','Ready to Deliver', 'Deliverd'], default: 'Pending' },
-  machineID: { type: mongoose.Schema.Types.ObjectId, ref: 'Machine' }, // Reference to the Machine model
+  // machineID: { type: mongoose.Schema.Types.ObjectId, ref: 'Machine' }, // Reference to the Machine model
 
 });
 

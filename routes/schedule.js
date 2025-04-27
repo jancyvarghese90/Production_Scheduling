@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const   Schedule = require('../models/Schedule');
-const {autoSchedule,getScheduleByOrder} = require('../controller/autoSchedulingStageMachineCapacity'); // Import the scheduling controller
+const {autoSchedule,getScheduleByOrder} = require('../controller/autoSchedulingUpdatedMachineSatus'); // Import the scheduling controller
 const auth = require('../middleware/auth'); // Import your authentication middleware
 // const Order = require('../models/Order');
 // Route to automatically schedule orders based on priority, delivery date, and order quantity

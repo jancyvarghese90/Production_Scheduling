@@ -68,9 +68,10 @@ const updateMachineStatus = async (machineId, status) => {
 
 // Helper function to calculate machine daily capacity (working hours minus break)
 const calculateMachineDailyCapacity = (machine) => {
-  const workingHoursPerDay = machine.shiftHoursPerDay;
-  const workingDaysPerWeek = machine.workingDays;
-  return workingHoursPerDay * workingDaysPerWeek;
+  // const workingHoursPerDay = machine.shiftHoursPerDay;
+  // const workingDaysPerWeek = machine.workingDays;
+  // return workingHoursPerDay * workingDaysPerWeek;
+  return machine.shiftHoursPerDay;
 };
 
 // Helper function to calculate machine start time for the next working day
@@ -119,19 +120,32 @@ const scheduleOrder = async (order, recommendations, machines) => {
   const deliveryDeadline = new Date(order.deliveryDate);
 
   const bom = await BOM.findOne({ outputItem: { $regex: new RegExp(`^${order.item}$`, 'i') } });
+
+  
   if (!bom || !bom.stages?.length) {
     console.warn(`No BOM found for item: ${order.item}`);
     return;
   }
 
 
+  console.log(`✅ Found ${bom.stages.length} stages for item: ${order.item}`);
 
+// Loop over the stages and log the `stageName` for each one
+bom.stages.forEach((stage, index) => {
+    console.log(`Stage ${index + 1}: ${stage.stageName}`);
+  });
 
-  let lastStageMinQtyEndTime = new Date();
+  let lastStageMinQtyEndTime = null
   let finalScheduledEnd = null;
 
   for (let stageIndex = 0; stageIndex < bom.stages.length; stageIndex++) {
+    
     const stage = bom.stages[stageIndex];
+
+    if (!stage || !stage.stageName) {
+        console.warn(`⚠️ Skipping undefined or invalid stage for order ${order.orderId}`);
+        continue;
+      }
     
     // ✅ Check for duplicate schedule
     const duplicate = await Schedule.findOne({
@@ -157,23 +171,55 @@ const scheduleOrder = async (order, recommendations, machines) => {
     const minQtyTime = minQty * timePerUnit;
   // Calculate when this stage’s minimum batch is done
     // const minQtyEndTime = new Date(lastStageMinQtyEndTime.getTime() + minQtyTime * 60 * 60 * 1000);
-        // lastStageMinQtyEndTime = minQtyEndTime; // Update lastStageMinQtyEndTime for the next stage
     // let scheduledStart = new Date(lastStageMinQtyEndTime)
      // For the first stage, start at the current time
-     let scheduledStart = (stageIndex === 0) ? new Date() : new Date(lastStageMinQtyEndTime); 
+     
+     
+    //  let scheduledStart = (stageIndex === 0) ? new Date() : new Date(lastStageMinQtyEndTime); 
+    let scheduledStart;
 
+    if (stageIndex === 0 || !lastStageMinQtyEndTime || isNaN(new Date(lastStageMinQtyEndTime).getTime())) {
+      scheduledStart = new Date(); // Fallback to now
+    } else {
+      scheduledStart = new Date(lastStageMinQtyEndTime);
+    }
+    
+    console.log('Order Data:', order);
+     
+     console.log('Scheduled Start:', scheduledStart);
+    
+      
+     const minQtyEndTime = new Date(scheduledStart.getTime() + minQtyTime * 60 * 60 * 1000);
+     lastStageMinQtyEndTime = minQtyEndTime; // Update lastStageMinQtyEndTime for the next stage
+     console.log('Last Stage minqty End Time:', lastStageMinQtyEndTime);
     // Compute total hours for the entire quantity
     const totalHours = fullQuantity * timePerUnit;
     let scheduledEnd = new Date(scheduledStart.getTime() + totalHours * 60 * 60 * 1000);
-    const minQtyEndTime = new Date(scheduledStart.getTime() + minQtyTime * 60 * 60 * 1000);
-
+    console.log('Scheduled End:', scheduledEnd);
+    if (isNaN(scheduledEnd.getTime())) {
+        console.error('Invalid scheduledEnd:', scheduledEnd);
+      }
     let remainingHours = totalHours;
+    // const availableMachine = machines.find(m =>
+    //   m.process === stage.stageName &&
+    //   m.status === 'Idle'
+    // );
+   
     const availableMachine = machines.find(m =>
-      m.process === stage.stageName &&
-      m.status === 'Idle'
-    );
+        new RegExp(`^${stage.stageName}$`, 'i').test(m.process) &&
+        m.status === 'Idle'
+      );
+    // const availableMachine = machines.filter(
+    //     m => m.process?.toLowerCase() === stage.process.toLowerCase() && m.status === "Idle"
+    //   );
 
+      if (availableMachine?.process === stage.stageName) {
+        // ✅ Safe to proceed with scheduling logic
+        console.log(`🟢 Proceeding with machine: ${availableMachine.machineId}`);
+      }
     if (!availableMachine) {
+        console.warn(`⚠️ No available machine found for stage "${stage.stageName}" in Order ${order.orderId}`);
+
       const rec = createRecommendation('Outsource', `No available machine for ${stage.stageName} of order ${order.orderId}`);
       recommendations.push(rec);
       await new Schedule({
@@ -231,7 +277,7 @@ const scheduleOrder = async (order, recommendations, machines) => {
     }
 
     finalScheduledEnd = scheduledEnd;
-    lastStageMinQtyEndTime = minQtyEndTime;
+    // lastStageMinQtyEndTime = minQtyEndTime;
   }
 
   // NEW: check against delivery date

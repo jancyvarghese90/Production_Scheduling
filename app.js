@@ -6,6 +6,8 @@ const Machine = require('./models/Machine.js');
 const orderRoute = require('./routes/orderRoutes.js');
 const scheduleRoutes = require('./routes/schedule.js');
 const machineRoute = require('./routes/machineRoutes.js');
+const User = require('./models/User.js');
+const authRoutes=require('./routes/authRoutes.js');
 require('dotenv').config();
 
 const app = express();
@@ -16,6 +18,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/order', orderRoute);
 app.use('/machines', machineRoute);
 app.use('/scheduling', scheduleRoutes);
+app.use('/auth', authRoutes);
 // Connect to MongoDB
 connectDB();
 
