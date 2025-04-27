@@ -26,34 +26,34 @@ const createRecommendation = (type, reason) => ({
 
 // 🛠 Helper function to update machine statuses
 
-async function updateMachineStatuses() {
-    try {
-      // 1. Fetch all schedules from your database
-      const schedules = await Schedule.find();
-      if (schedules.length === 0) {
-        console.log('No schedules found. Skipping machine status update.');
-        return; // Don't do anything if no schedules yet
-      }
-      for (const schedule of schedules) {
-        // // 2. Fetch machine details from external API
-        // const { data: machine } = await axios.get(`https://kera-internship.onrender.com/schedule/${schedule.machineID}`);
+// async function updateMachineStatuses() {
+//     try {
+//       // 1. Fetch all schedules from your database
+//       const schedules = await Schedule.find();
+//       if (schedules.length === 0) {
+//         console.log('No schedules found. Skipping machine status update.');
+//         return; // Don't do anything if no schedules yet
+//       }
+//       for (const schedule of schedules) {
+//         // // 2. Fetch machine details from external API
+//         // const { data: machine } = await axios.get(`https://kera-internship.onrender.com/schedule/${schedule.machineID}`);
   
-        // 3. Example logic: If schedule end time < now, set machine to Idle
-        const now = new Date();
+//         // 3. Example logic: If schedule end time < now, set machine to Idle
+//         const now = new Date();
   
-        if (schedule.endTime && new Date(schedule.endTime) < now) {
-          // 4. Update machine status to Idle
-          await axios.put(`https://kera-internship.onrender.com/schedule/edit/${machineID}`, {status: 'Idle' });
-        } else {
-          // 5. Otherwise, ensure machine is Running
-          await axios.put(`https://kera-internship.onrender.com/schedule/edit/${machineID}`, { status: 'Running' });
-        }
-      }
+//         if (schedule.endTime && new Date(schedule.endTime) < now) {
+//           // 4. Update machine status to Idle
+//           await axios.put(`https://kera-internship.onrender.com/schedule/edit/${machineID}`, {status: 'Idle' });
+//         } else {
+//           // 5. Otherwise, ensure machine is Running
+//           await axios.put(`https://kera-internship.onrender.com/schedule/edit/${machineID}`, { status: 'Running' });
+//         }
+//       }
   
-    } catch (error) {
-      console.error('Error updating machine statuses:', error.message);
-    }
-  }
+//     } catch (error) {
+//       console.error('Error updating machine statuses:', error.message);
+//     }
+//   }
 // Auto-schedule production orders
 const autoSchedule = async () => {
     const orders = await fetchOrders();
@@ -112,16 +112,16 @@ const isOrderFullyScheduled = async (orderID) => {
 };
 
 // Update machine status to 'Idle' when it is not assigned to any task
-// const updateMachineStatus = async (machineId, status) => {
-//   try {
-//     await axios.put(`https://kera-internship.onrender.com/schedule/edit/${machineId}`, {
-//       status,
-//     });
-//     console.log(`🚀 Machine ${machineId} status updated to '${status}'`);
-//   } catch (error) {
-//     console.error(`❌ Error updating machine ${machineId} status:`, error.message);
-//   }
-// };
+const updateMachineStatus = async (machineId, status) => {
+  try {
+    await axios.put(`https://kera-internship.onrender.com/schedule/edit/${machineId}`, {
+      status,
+    });
+    console.log(`🚀 Machine ${machineId} status updated to '${status}'`);
+  } catch (error) {
+    console.error(`❌ Error updating machine ${machineId} status:`, error.message);
+  }
+};
 
 
 
@@ -160,40 +160,76 @@ const scheduleOrder = async (order, recommendations, machines) => {
       return;
     }
 
+
     const machineStart = moment(availableMachine.startTime, 'HH:mm');
     const machineEnd = moment(availableMachine.endTime, 'HH:mm');
     const shiftHours = machineEnd.diff(machineStart, 'hours');
+    console.log('machineEnd:', machineEnd.format('HH:mm'));
+    console.log('machineStart:', machineStart.format('HH:mm'));
+    console.log('shiftHours:', shiftHours);
+    
     let workingDays;
-  if (typeof availableMachine.workingDays === 'number') {
-    // If workingDays is a number (like 6), assume machine works Monday to Saturday
-    workingDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  } else {
+    if (typeof availableMachine.workingDays === 'number') {
+      workingDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    } else {
+      workingDays = Array.isArray(availableMachine.workingDays)
+        ? availableMachine.workingDays
+        : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    }
     
-    workingDays = Array.isArray(availableMachine.workingDays) ? availableMachine.workingDays : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  }
-    let currentTime = lastStageMinQtyEndTime ? moment(lastStageMinQtyEndTime) : moment().startOf('day').hour(machineStart.hour()).minute(machineStart.minute());
-
-    // while (!workingDays.includes(currentTime.format('dddd')) || currentTime.isAfter(machineEnd)) {
-    //   console.log('currentTime:', currentTime.format('YYYY-MM-DD HH:mm'));
-
-    //   currentTime = currentTime.add(1, 'day').hour(machineStart.hour()).minute(machineStart.minute());
-    // }
-    while (!workingDays.includes(currentTime.format('dddd')) || currentTime.isAfter(machineEnd)) {
-      console.log('currentTime:', currentTime.format('YYYY-MM-DD HH:mm'));
+    // Initialize currentTime
+    let now = moment();
+    let currentTime = lastStageMinQtyEndTime 
+      ? moment(lastStageMinQtyEndTime)
+      : now;
     
-      // Check if the current time is after the machine's end time
-      if (currentTime.isAfter(machineEnd)) {
-        // If it's past the working day, move to the next day and reset time to machineStart
-        currentTime = currentTime.add(1, 'day').hour(machineStart.hour()).minute(machineStart.minute());
-      } else {
-        // Otherwise, we are in a valid working day, break out of the loop
-        break;
-      }}
+    // Only after initializing currentTime, check working days and machine time
+    const currentHourMinute = currentTime.format('HH:mm');
+    const machineStartHourMinute = machineStart.format('HH:mm');
+    const machineEndHourMinute = machineEnd.format('HH:mm');
     
+    // Non-working day
+    if (!workingDays.includes(currentTime.format('dddd'))) {
+      console.log('Non-working day detected, moving to next working day');
+      currentTime = currentTime.add(1, 'day').set({
+        hour: machineStart.hour(),
+        minute: machineStart.minute(),
+        second: 0,
+        millisecond: 0
+      });
+    } 
+    // Before machine start time
+    else if (currentHourMinute < machineStartHourMinute) {
+      console.log('Before working hours, adjusting to start time');
+      currentTime.set({
+        hour: machineStart.hour(),
+        minute: machineStart.minute(),
+        second: 0,
+        millisecond: 0
+      });
+    } 
+    // After machine end time
+    else if (currentHourMinute > machineEndHourMinute) {
+      console.log('Past working hours, moving to next working day');
+      currentTime = currentTime.add(1, 'day').set({
+        hour: machineStart.hour(),
+        minute: machineStart.minute(),
+        second: 0,
+        millisecond: 0
+      });
+    } 
+    // Valid time
+    else {
+      console.log('Within working hours, continuing');
+    }
+    
+    console.log('Adjusted currentTime:', currentTime.format('YYYY-MM-DD HH:mm'));
+   
     let remainingTime = totalHours;
     let scheduledStart = moment(currentTime);
     let scheduleChunks = [];
-
+// Update machine status to 'Active' when the schedule starts
+await updateMachineStatus(availableMachine._id, 'Active'); // Assuming updateMachineStatus is a function
     while (remainingTime > 0) {
       if (!workingDays.includes(currentTime.format('dddd'))) {
         currentTime = currentTime.add(1, 'day').hour(machineStart.hour()).minute(machineStart.minute());
@@ -209,6 +245,7 @@ const scheduleOrder = async (order, recommendations, machines) => {
       remainingTime -= availableToday;
       currentTime = moment(dayEnd).add(1, 'minute');
     }
+    await updateMachineStatus(availableMachine._id, 'Idle'); // Change machine status to 'Idle'
 
     const scheduledEnd = scheduleChunks[scheduleChunks.length - 1].end;
     const minQtyEndTime = moment(scheduledStart).add(minQtyTime, 'hours');
@@ -232,13 +269,7 @@ const scheduleOrder = async (order, recommendations, machines) => {
     await updateOrderStatusToScheduled(order._id);
   }
 
-//   machines.forEach(async (machine) => {
-//     if (!machine.assignedOrders || machine.assignedOrders.length === 0) {
-//       await updateMachineStatus(machine._id, 'Idle');
-//     }
-//   }
-// );
-await updateMachineStatuses();
+
 }
 // Get schedules for a specific order ID
 const getScheduleByOrder = async (orderId) => {
