@@ -35,6 +35,20 @@ const updateMachineStatusesToIdle = async () => {
   }
 };
 
-module.exports = {
-  updateMachineStatusesToIdle,
-};
+const updateMachineStatusToActive = async (machineId) => {
+    try {
+      // Update the machine status to 'Active'
+      const status = 'Active';  // You can adjust this based on logic
+      await axios.put(`https://kera-internship.onrender.com/schedule/edit/${machineId}`, {
+        status: status,
+      });
+      console.log(`🚀 Machine ${machineId} status updated to '${status}'`);
+    } catch (error) {
+      console.error(`❌ Error updating machine ${machineId} status:`, error.message);
+    }
+  };
+
+
+
+module.exports = {  updateMachineStatusesToIdle,updateMachineStatusToActive};
+

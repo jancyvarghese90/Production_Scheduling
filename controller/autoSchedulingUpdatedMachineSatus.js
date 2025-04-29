@@ -3,7 +3,7 @@ const BOM = require('../models/BOM.js');
 const axios = require('axios');
 const Schedule = require('../models/Schedule');
 const express = require('express');
-const {updateMachineStatusesToIdle,updateMachineStatusToActive} = require('./machineStausUpdate.js');
+const {updateMachineStatusesToIdle,updateMachineStatusToActive} = require('./machineStausUpdate');
 
 // Fetch data from third-party APIs
 const fetchOrders = async () => {
@@ -219,7 +219,7 @@ const scheduleOrder = async (order, recommendations, machines) => {
     const scheduledEnd = scheduleChunks[scheduleChunks.length - 1].end;
     const minQtyEndTime = moment.utc(scheduledStart).add(minQtyTime, 'hours');
 
-    updateMachineStatusToActive(availableMachine._id); // Update machine status to 'Active' when the schedule starts
+   await  updateMachineStatusToActive(availableMachine._id); // Update machine status to 'Active' when the schedule starts
     await new Schedule({
       orderID: order._id,
       orderNumber: order.orderId,
