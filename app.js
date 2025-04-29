@@ -24,5 +24,8 @@ connectDB();
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
+  console.log("Server time:", new Date());
+  console.log("Server timezone offset (minutes from UTC):", new Date().getTimezoneOffset());
   console.log(`Server is running on port ${PORT}`);
+
 });

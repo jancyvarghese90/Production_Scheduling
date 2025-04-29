@@ -3,11 +3,11 @@ const BOM = require('../models/BOM.js');
 const axios = require('axios');
 const Schedule = require('../models/Schedule');
 const express = require('express');
+const {updateMachineStatusesToIdle,updateMachineStatusToActive} = require('./machineStausUpdate.js');
 
 // Fetch data from third-party APIs
 const fetchOrders = async () => {
   const response = await axios.get('https://kera-internship.onrender.com/order');
-  console.log('Fetched orders:', response.data); 
   return response.data;
 
  // Debugging line to check fetched orders
@@ -16,7 +16,6 @@ const fetchOrders = async () => {
 
 const fetchMachines = async () => {
   const response = await axios.get('https://kera-internship.onrender.com/schedule');
-  console.log('Fetched machines:', response.data); 
   return response.data; // Fetching machine data from the API
 };
 
@@ -60,7 +59,7 @@ const createRecommendation = (type, reason) => ({
 //   }
 // Auto-schedule production orders
 const autoSchedule = async () => {
-  console.log('autoSchedule function started'); 
+  await updateMachineStatusesToIdle();
     const orders = await fetchOrders();
       
     const machines = await fetchMachines();
@@ -116,18 +115,6 @@ const isOrderFullyScheduled = async (orderID) => {
   );
 };
 
-// Update machine status to 'Idle' when it is not assigned to any task
-const updateMachineStatus = async (machineId, status) => {
-  try {
-    await axios.put(`https://kera-internship.onrender.com/schedule/edit/${machineId}`, {
-      status,
-    });
-    console.log(`🚀 Machine ${machineId} status updated to '${status}'`);
-  } catch (error) {
-    console.error(`❌ Error updating machine ${machineId} status:`, error.message);
-  }
-};
-
 
 
 const scheduleOrder = async (order, recommendations, machines) => {
@@ -147,9 +134,7 @@ const scheduleOrder = async (order, recommendations, machines) => {
     const timePerUnit = stage.hoursRequiredMinQty / minQty;
     const totalHours = fullQuantity * timePerUnit;
     const minQtyTime = minQty * timePerUnit;
-    console.log("stage.stageName:", stage.stageName);
         const availableMachine = machines.find(m => m.process === stage.stageName && m.status === "Idle");
-        console.log("Avaiable machine:", availableMachine);
         if (!availableMachine) {
       const recommendation = createRecommendation('Outsource', `No available machine for ${stage.stageName}`);
       recommendations.push(recommendation);
@@ -169,8 +154,8 @@ const scheduleOrder = async (order, recommendations, machines) => {
     }
 
 
-    const machineStart = moment(availableMachine.startTime, 'HH:mm');
-    const machineEnd = moment(availableMachine.endTime, 'HH:mm');
+    const machineStart = moment.utc(availableMachine.startTime, 'HH:mm');
+    const machineEnd = moment.utc(availableMachine.endTime, 'HH:mm');
     const shiftHours = machineEnd.diff(machineStart, 'hours');
     console.log('machineEnd:', machineEnd.format('HH:mm'));
     console.log('machineStart:', machineStart.format('HH:mm'));
@@ -186,18 +171,16 @@ const scheduleOrder = async (order, recommendations, machines) => {
     }
     
     // Initialize currentTime
-    let now = moment();
+    let now = moment.utc();
     let currentTime = lastStageMinQtyEndTime 
-      ? moment(lastStageMinQtyEndTime)
+      ? moment.utc(lastStageMinQtyEndTime)
       : now;
     
     // Only after initializing currentTime, check working days and machine time
     const currentHourMinute = currentTime.format('HH:mm');
-    console.log('currentHourMinute:', currentHourMinute);
+   
     const machineStartHourMinute = machineStart.format('HH:mm');
-    console.log('machineStartHourMinute:', machineStartHourMinute);
     const machineEndHourMinute = machineEnd.format('HH:mm');
-    console.log('machineEndHourMinute:', machineEndHourMinute);
     
     // Non-working day
     if (!workingDays.includes(currentTime.format('dddd'))) {
@@ -220,7 +203,7 @@ const scheduleOrder = async (order, recommendations, machines) => {
       });
     } 
     // After machine end time
-    else if (currentHourMinute > machineEndHourMinute) {
+    else if (currentHourMinute >= machineEndHourMinute) {
       console.log('Past working hours, moving to next working day');
       currentTime = currentTime.add(1, 'day').set({
         hour: machineStart.hour(),
@@ -237,35 +220,40 @@ const scheduleOrder = async (order, recommendations, machines) => {
     console.log('Adjusted currentTime:', currentTime.format('YYYY-MM-DD HH:mm'));
    
     let remainingTime = totalHours;
-    let scheduledStart = moment(currentTime);
+    let scheduledStart = moment.utc(currentTime);
     let scheduleChunks = [];
 // Update machine status to 'Active' when the schedule starts
-await updateMachineStatus(availableMachine._id, 'Active'); // Assuming updateMachineStatus is a function
+// await updateMachineStatus(availableMachine._id, 'Active'); // Assuming updateMachineStatus is a function
     while (remainingTime > 0) {
       if (!workingDays.includes(currentTime.format('dddd'))) {
         currentTime = currentTime.add(1, 'day').hour(machineStart.hour()).minute(machineStart.minute());
         continue;
       }
+      
+       
 
       const availableToday = Math.min(shiftHours, remainingTime);
-      const dayStart = moment(currentTime);
-      const dayEnd = moment(dayStart).add(availableToday, 'hours');
 
-      scheduleChunks.push({ start: moment(dayStart), end: moment(dayEnd) });
+
+      const dayStart = moment.utc(currentTime);
+      const dayEnd = moment.utc(dayStart).add(availableToday, 'hours');
+
+      scheduleChunks.push({ start: moment.utc(dayStart), end: moment.utc(dayEnd) });
 
       remainingTime -= availableToday;
-      currentTime = moment(dayEnd).add(1, 'minute');
+      currentTime = moment.utc(dayEnd).add(1, 'minute');
     }
-    await updateMachineStatus(availableMachine._id, 'Idle'); // Change machine status to 'Idle'
+    // await updateMachineStatus(availableMachine._id, 'Idle'); // Change machine status to 'Idle'
 
     const scheduledEnd = scheduleChunks[scheduleChunks.length - 1].end;
-    const minQtyEndTime = moment(scheduledStart).add(minQtyTime, 'hours');
+    const minQtyEndTime = moment.utc(scheduledStart).add(minQtyTime, 'hours');
 
-    // await updateMachineStatus(availableMachine._id, 'Active');
-
+    updateMachineStatusToActive(availableMachine._id); // Update machine status to 'Active' when the schedule starts
     await new Schedule({
       orderID: order._id,
+      orderNumber: order.orderId,
       machineID: availableMachine._id,
+      machineName: availableMachine.machineName,
       stageName: stage.stageName,
       scheduledStart: scheduledStart.toDate(),
       scheduledEnd: scheduledEnd.toDate(),
