@@ -27,36 +27,7 @@ const createRecommendation = (type, reason) => ({
   createdAt: new Date(),
 });
 
-// 🛠 Helper function to update machine statuses
 
-// async function updateMachineStatuses() {
-//     try {
-//       // 1. Fetch all schedules from your database
-//       const schedules = await Schedule.find();
-//       if (schedules.length === 0) {
-//         console.log('No schedules found. Skipping machine status update.');
-//         return; // Don't do anything if no schedules yet
-//       }
-//       for (const schedule of schedules) {
-//         // // 2. Fetch machine details from external API
-//         // const { data: machine } = await axios.get(`https://kera-internship.onrender.com/schedule/${schedule.machineID}`);
-  
-//         // 3. Example logic: If schedule end time < now, set machine to Idle
-//         const now = new Date();
-  
-//         if (schedule.endTime && new Date(schedule.endTime) < now) {
-//           // 4. Update machine status to Idle
-//           await axios.put(`https://kera-internship.onrender.com/schedule/edit/${machineID}`, {status: 'Idle' });
-//         } else {
-//           // 5. Otherwise, ensure machine is Running
-//           await axios.put(`https://kera-internship.onrender.com/schedule/edit/${machineID}`, { status: 'Running' });
-//         }
-//       }
-  
-//     } catch (error) {
-//       console.error('Error updating machine statuses:', error.message);
-//     }
-//   }
 // Auto-schedule production orders
 const autoSchedule = async () => {
   await updateMachineStatusesToIdle();
