@@ -7,12 +7,16 @@ const express = require('express');
 // Fetch data from third-party APIs
 const fetchOrders = async () => {
   const response = await axios.get('https://kera-internship.onrender.com/order');
+  console.log('Fetched orders:', response.data); 
   return response.data;
+
+ // Debugging line to check fetched orders
 };
 
 
 const fetchMachines = async () => {
   const response = await axios.get('https://kera-internship.onrender.com/schedule');
+  console.log('Fetched machines:', response.data); 
   return response.data; // Fetching machine data from the API
 };
 
@@ -56,6 +60,7 @@ const createRecommendation = (type, reason) => ({
 //   }
 // Auto-schedule production orders
 const autoSchedule = async () => {
+  console.log('autoSchedule function started'); 
     const orders = await fetchOrders();
       
     const machines = await fetchMachines();
@@ -142,9 +147,10 @@ const scheduleOrder = async (order, recommendations, machines) => {
     const timePerUnit = stage.hoursRequiredMinQty / minQty;
     const totalHours = fullQuantity * timePerUnit;
     const minQtyTime = minQty * timePerUnit;
-
-    const availableMachine = machines.find(m => m.process === stage.stageName && m.status === "Idle");
-    if (!availableMachine) {
+    console.log("stage.stageName:", stage.stageName);
+        const availableMachine = machines.find(m => m.process === stage.stageName && m.status === "Idle");
+        console.log("Avaiable machine:", availableMachine);
+        if (!availableMachine) {
       const recommendation = createRecommendation('Outsource', `No available machine for ${stage.stageName}`);
       recommendations.push(recommendation);
       await new Schedule({
@@ -154,6 +160,8 @@ const scheduleOrder = async (order, recommendations, machines) => {
         stageName: stage.stageName,
         quantity: fullQuantity,
         status: 'Pending Approval',
+        scheduledStart: new Date(),
+        scheduledEnd: new Date(),
         isManualApprovalRequired: true,
         recommendation,
       }).save();
@@ -185,8 +193,11 @@ const scheduleOrder = async (order, recommendations, machines) => {
     
     // Only after initializing currentTime, check working days and machine time
     const currentHourMinute = currentTime.format('HH:mm');
+    console.log('currentHourMinute:', currentHourMinute);
     const machineStartHourMinute = machineStart.format('HH:mm');
+    console.log('machineStartHourMinute:', machineStartHourMinute);
     const machineEndHourMinute = machineEnd.format('HH:mm');
+    console.log('machineEndHourMinute:', machineEndHourMinute);
     
     // Non-working day
     if (!workingDays.includes(currentTime.format('dddd'))) {
