@@ -50,5 +50,6 @@ const scheduleSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
-
+// Ensure that each order and stage is only scheduled once
+scheduleSchema.index({ orderID: 1, stageName: 1 }, { unique: true });
 module.exports = mongoose.model('Schedule', scheduleSchema);
