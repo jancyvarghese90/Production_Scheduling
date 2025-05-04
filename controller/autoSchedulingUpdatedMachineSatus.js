@@ -346,7 +346,7 @@ if (typeof availableMachine.workingDays === 'number') {
       orderID: order._id,
       orderNumber: order.orderId,
       machineID: availableMachine._id,
-      machineName: availableMachine.machineName,
+      machineName: availableMachine.machineId,
       stageName: stage.stageName,
       scheduledStart: scheduledStart.toDate(),
       scheduledEnd: scheduledEnd.toDate(),
