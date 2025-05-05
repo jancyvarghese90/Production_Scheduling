@@ -11,6 +11,7 @@ const authRoutes=require('./routes/authRoutes.js');
 const Schedule = require('./models/Schedule.js');
 const axios = require('axios');
 const cron = require('node-cron');
+const scheduleOrderStatusUpdate = require('./cronJob/orderCron.js'); // Import the cron job function  
 const moment = require('moment'); // Import moment for date manipulation
 require('dotenv').config();
 
@@ -19,7 +20,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use('/order', orderRoute);
+app.use('/api', orderRoute);
 app.use('/machines', machineRoute);
 app.use('/scheduling', scheduleRoutes);
 app.use('/auth', authRoutes);
@@ -72,9 +73,11 @@ cron.schedule('* * * * *', async () => {
   }
 });;
 const PORT = process.env.PORT || 5000;
+ // Schedule the cron job
+ scheduleOrderStatusUpdate.scheduleOrderStatusUpdate();
 app.listen(PORT, () => {
   console.log("Server time:", new Date());
   console.log("Server timezone offset (minutes from UTC):", new Date().getTimezoneOffset());
   console.log(`Server is running on port ${PORT}`);
-
+  
 });
