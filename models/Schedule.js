@@ -46,7 +46,7 @@ const scheduleSchema = new mongoose.Schema({
   isManualApprovalRequired: { type: Boolean, default: false },
   isApproved: { type: Boolean, default: false },
   
-  recommendation: recommendationSchema, // 👈 Embedded Recommendation here
+  recommendation: [recommendationSchema], // 👈 Embedded Recommendation here
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });

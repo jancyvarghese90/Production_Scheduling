@@ -43,13 +43,31 @@ const autoSchedule = async () => {
     for (let order of sortedOrders) {
       console.log('Processing order:', order.item, order.orderId);
       const existingSchedule = await Schedule.findOne({ orderID: order._id, status: 'Scheduled' });
+
+      // if (order.isNonChangeable && existingSchedule) {
+
+      //   recommendations.push(createRecommendation(
+      //     'Manual Approval',
+      //     `Order ${order.orderId} is non-changeable and already scheduled.`
+      //   ));
+      //   continue;
+      // }
       if (order.isNonChangeable && existingSchedule) {
-        recommendations.push(createRecommendation(
-          'Manual Approval',
-          `Order ${order.orderId} is non-changeable and already scheduled.`
-        ));
-        continue;
+        const fullyScheduled = await isOrderFullyScheduled(order._id, order.item);
+        if (fullyScheduled) {
+          console.log(`✅ Order ${order.orderId} is fully scheduled.`);
+          continue; // Do not re-schedule
+        } else {
+          console.log(`⚠️ Order ${order.orderId} is non-changeable but not fully scheduled.`);
+          recommendations.push(createRecommendation(
+            'Manual Approval',
+            `Order ${order.orderId} is non-changeable but not fully scheduled. Manual intervention required.`
+          ));
+          continue;
+        }
       }
+
+
       await scheduleOrder(order, recommendations, machines);
     }
   
@@ -72,20 +90,38 @@ const updateOrderStatusToScheduled = async (orderId) => {
 };
 
 // Check if all stages are fully scheduled for the order
-const isOrderFullyScheduled = async (orderID) => {
-    console.log('About to query schedules for orderID=', orderID);
+// const isOrderFullyScheduled = async (orderID) => {
+//     console.log('About to query schedules for orderID=', orderID);
+//   const schedules = await Schedule.find({ orderID });
+//   console.log('Schedules found:', schedules);
+//   if (schedules.length === 0) {
+//     console.log(`⚠️ No schedules found for orderID: ${orderID}`);
+//     return false;
+//   }
+//   return schedules.every(schedule =>
+//     schedule.status === 'Scheduled' ||
+//     (schedule.isManualApprovalRequired && schedule.status === 'Pending Approval')
+//   );
+// };
+const isOrderFullyScheduled = async (orderID, outputItem) => {
+  // Get all schedules for the order
   const schedules = await Schedule.find({ orderID });
-  console.log('Schedules found:', schedules);
-  if (schedules.length === 0) {
-    console.log(`⚠️ No schedules found for orderID: ${orderID}`);
+
+  // Get BOM stages for the given itemCode from your schema
+  const bom = await BOM.findOne({ outputItem });
+  if (!bom || !bom.stages || bom.stages.length === 0) {
+    console.log(`⚠️ No BOM stages found for itemCode: ${outputItem}`);
     return false;
   }
-  return schedules.every(schedule =>
-    schedule.status === 'Scheduled' ||
-    (schedule.isManualApprovalRequired && schedule.status === 'Pending Approval')
-  );
-};
 
+  // Ensure each BOM stage has a 'Scheduled' status schedule
+  const allStagesScheduled = bom.stages.every(stage => {
+    const matchingSchedule = schedules.find(s => s.stageName === stage.stageName);
+    return matchingSchedule && matchingSchedule.status === 'Scheduled';
+  });
+
+  return allStagesScheduled;
+};
 
 
 const scheduleOrder = async (order, recommendations, machines) => {
@@ -196,11 +232,7 @@ if (typeof availableMachine.workingDays === 'number') {
     : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']; // Default working days, excluding Sunday
 }
     
-    // Initialize currentTime
-    // let now = moment.utc();
-    // let currentTime = lastStageMinQtyEndTime 
-    //   ? moment.utc(lastStageMinQtyEndTime)
-    //   : now;
+   
 
     let currentTime;
     if (lastStageMinQtyEndTime) {
@@ -217,20 +249,7 @@ if (typeof availableMachine.workingDays === 'number') {
    
     const machineStartHourMinute = machineStart.format('HH:mm');
     const machineEndHourMinute = machineEnd.format('HH:mm');
-     // Get the machine's daily shift start and end for this day
-  // const shiftStart = currentTime.clone().set({
-  //   hour: machineStart.hour(),
-  //   minute: machineStart.minute(),
-  //   second: 0,
-  //   millisecond: 0,
-  // });
-
-  // const shiftEnd = currentTime.clone().set({
-  //   hour: machineEnd.hour(),
-  //   minute: machineEnd.minute(),
-  //   second: 0,
-  //   millisecond: 0,
-  // });
+  
     // Non-working day
     if (!workingDays.includes(currentTime.format('dddd'))) {
       console.log('Non-working day detected, moving to next working day');
@@ -271,33 +290,7 @@ if (typeof availableMachine.workingDays === 'number') {
     let remainingTime = totalHours;
     let scheduledStart = moment.utc(currentTime);
     let scheduleChunks = [];
-    // while (remainingTime > 0) {
-    //   if (!workingDays.includes(currentTime.format('dddd'))) {
-    //     currentTime = currentTime.add(1, 'day').hour(machineStart.hour()).minute(machineStart.minute());
-    //     continue;
-    //   }
-      
-       
-
-    //   // const availableToday = Math.min(shiftHours, remainingTime);
-    //   const availableToday= shiftHours - (currentTime.hour() - machineStart.hour()) + (currentTime.minute() - machineStart.minute()) / 60;
-
-
-    //   // const availableToday = moment.duration(shiftEnd.diff(currentTime)).asHours();
-
-    //   if (availableToday <= 0) {
-    //     // Move to next valid working day
-    //     currentTime = currentTime.add(1, 'day').set({
-    //       hour: machineStart.hour(),
-    //       minute: machineStart.minute(),
-    //       second: 0,
-    //       millisecond: 0
-    //     });
-    //     continue;
-    //   }
-
-    //   const dayStart = moment.utc(currentTime);
-    //   const dayEnd = moment.utc(dayStart).add(availableToday, 'hours');
+ 
 
     while (remainingTime > 0) {
       if (!workingDays.includes(currentTime.format('dddd'))) {
@@ -341,6 +334,16 @@ if (typeof availableMachine.workingDays === 'number') {
 
     const scheduledEnd = scheduleChunks[scheduleChunks.length - 1].end;
     const minQtyEndTime = moment.utc(scheduledStart).add(minQtyTime, 'hours');
+    const deliveryDateUTC = moment.utc(order.deliveryDate);
+    const isLate = scheduledEnd.isAfter(deliveryDateUTC);
+    if (isLate) {
+      const recommendation = createRecommendation('Outsource or Extra Shift',
+         `Schedule for stage ${stage.stageName} of order ${order.orderId} exceeds delivery date and needs approval.`
+);
+      recommendations.push(recommendation);
+    }
+    // 🧹 Delete existing schedule to prevent duplicate key error
+await Schedule.deleteOne({ orderID: order._id, stageName: stage.stageName });
 
     await new Schedule({
       orderID: order._id,
@@ -351,13 +354,16 @@ if (typeof availableMachine.workingDays === 'number') {
       scheduledStart: scheduledStart.toDate(),
       scheduledEnd: scheduledEnd.toDate(),
       quantity: fullQuantity,
-      status: 'Scheduled',
+      // status: 'Scheduled',
+      status: isLate ? 'Pending Approval' : 'Scheduled',
+      isManualApprovalRequired: isLate,
+      recommendation: isLate ? recommendations : null,
     }).save();
 
     lastStageMinQtyEndTime = minQtyEndTime.toDate();
   }
 
-  if (order.status?.toLowerCase() === 'pending' && await isOrderFullyScheduled(order._id)) {
+  if (order.status?.toLowerCase() === 'pending' && await isOrderFullyScheduled(order._id,order.item)) {
     await updateOrderStatusToScheduled(order._id);
   }
 
