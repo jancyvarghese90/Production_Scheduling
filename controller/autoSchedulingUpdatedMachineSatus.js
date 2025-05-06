@@ -205,7 +205,7 @@ for (let machine of machines.filter(m => m.process === stage.stageName)) {
         machineID: null,
         stageName: stage.stageName,
         quantity: fullQuantity,
-        status: 'Pending Approval',
+        status: 'Manual Approval',
         scheduledStart: new Date(),
         scheduledEnd: new Date(),
         isManualApprovalRequired: true,
@@ -355,7 +355,7 @@ await Schedule.deleteOne({ orderID: order._id, stageName: stage.stageName });
       scheduledEnd: scheduledEnd.toDate(),
       quantity: fullQuantity,
       // status: 'Scheduled',
-      status: isLate ? 'Pending Approval' : 'Scheduled',
+      status: isLate ? 'Manual Approval' : 'Scheduled',
       isManualApprovalRequired: isLate,
       recommendation: isLate ? recommendations : null,
     }).save();
