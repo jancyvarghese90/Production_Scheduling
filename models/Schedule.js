@@ -15,7 +15,7 @@ const Order = require('./Order');
 const recommendationSchema = new mongoose.Schema({
   type: {
     type: String,
-    enum: ['Outsource', 'Extra Shift', 'Reschedule'],
+    enum: ['Outsource', 'Extra Shift', 'Reschedule','Manual Approval'],
     required: true,
   },
   reason: { type: String, required: true },
@@ -39,7 +39,7 @@ const scheduleSchema = new mongoose.Schema({
 
   status: {
     type: String,
-    enum: ['Scheduled', 'In Progress', 'Completed', 'Rejected', 'Pending Approval'],
+    enum: ['Scheduled', 'In Progress', 'Completed',  'Pending Approval'],
     default: 'Scheduled'
   },
 

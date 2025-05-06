@@ -205,7 +205,7 @@ for (let machine of machines.filter(m => m.process === stage.stageName)) {
         machineID: null,
         stageName: stage.stageName,
         quantity: fullQuantity,
-        status: 'Manual Approval',
+        status: 'Pending Approval',
         scheduledStart: new Date(),
         scheduledEnd: new Date(),
         isManualApprovalRequired: true,
@@ -337,7 +337,7 @@ if (typeof availableMachine.workingDays === 'number') {
     const deliveryDateUTC = moment.utc(order.deliveryDate);
     const isLate = scheduledEnd.isAfter(deliveryDateUTC);
     if (isLate) {
-      const recommendation = createRecommendation('Outsource or Extra Shift',
+      const recommendation = createRecommendation('Outsource',
          `Schedule for stage ${stage.stageName} of order ${order.orderId} exceeds delivery date and needs approval.`
 );
       recommendations.push(recommendation);
@@ -355,7 +355,7 @@ await Schedule.deleteOne({ orderID: order._id, stageName: stage.stageName });
       scheduledEnd: scheduledEnd.toDate(),
       quantity: fullQuantity,
       // status: 'Scheduled',
-      status: isLate ? 'Manual Approval' : 'Scheduled',
+      status: isLate ? 'Pending Approval' : 'Scheduled',
       isManualApprovalRequired: isLate,
       recommendation: isLate ? recommendations : null,
     }).save();
