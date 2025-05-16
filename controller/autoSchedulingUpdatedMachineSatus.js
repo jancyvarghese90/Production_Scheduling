@@ -325,14 +325,31 @@ if (typeof availableMachine.workingDays === 'number') {
       const dayStart = moment.utc(currentTime);
       const workHours = Math.min(availableToday, remainingTime);
       const dayEnd = moment.utc(dayStart).add(workHours, 'hours');
-
-      scheduleChunks.push({ start: moment.utc(dayStart), end: moment.utc(dayEnd) });
+      const chunkStartTime = dayStart.clone();
+      const chunkEndTime = dayEnd.clone();
+    
+      // Calculate quantity
+      const chunkQuantity = workHours / timePerUnit;
+      scheduleChunks.push({
+        startTime: chunkStartTime.toDate(),
+        endTime: chunkEndTime.toDate(),
+        quantity: Math.floor(chunkQuantity),
+      });
+      console.log(`Scheduled chunk of ${stage.stageName}: ${dayStart.format('YYYY-MM-DD HH:mm')} to ${dayEnd.format('YYYY-MM-DD HH:mm')}`);
+      console.log(`Remaining time of ${stage.stageName}:', ${remainingTime}, 'hours`);
 
       remainingTime -= workHours;
       currentTime = moment.utc(dayEnd).add(1, 'minute');
     }
 
-    const scheduledEnd = scheduleChunks[scheduleChunks.length - 1].end;
+    // const scheduledEnd = scheduleChunks[scheduleChunks.length - 1].end;
+    let scheduledEnd;
+if (scheduleChunks && scheduleChunks.length > 0) {
+  scheduledEnd = moment.utc(scheduleChunks[scheduleChunks.length - 1].endTime);
+} else {
+  console.warn('⚠️ scheduleChunks is empty or undefined, cannot calculate scheduledEnd.');
+  scheduledEnd = moment.utc(scheduledStart).add(minQtyTime, 'hours'); // fallback
+}
     const minQtyEndTime = moment.utc(scheduledStart).add(minQtyTime, 'hours');
     const deliveryDateUTC = moment.utc(order.deliveryDate);
     const isLate = scheduledEnd.isAfter(deliveryDateUTC);
@@ -358,8 +375,8 @@ await Schedule.deleteOne({ orderID: order._id, stageName: stage.stageName });
       status: isLate ? 'Pending Approval' : 'Scheduled',
       isManualApprovalRequired: isLate,
       recommendation: isLate ? recommendations : null,
+      scheduleChunks: scheduleChunks,
     }).save();
-
     lastStageMinQtyEndTime = minQtyEndTime.toDate();
   }
 

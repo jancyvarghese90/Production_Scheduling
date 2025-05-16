@@ -1,14 +1,4 @@
-// const mongoose = require('mongoose');
-// const scheduleSchema = new mongoose.Schema({
-//     orderID: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', required: true },
-//     machineID: { type: mongoose.Schema.Types.ObjectId, ref: 'Machine', required: true },
-//     scheduledStart: { type: Date, required: true },
-//     scheduledEnd: { type: Date, required: true },
-//     status: { type: String, enum: ['Scheduled', 'PendingApproval', 'Approved', 'Rejected'], default: 'Scheduled' },
-//   });
-  
-//   module.exports = mongoose.model('Schedule', scheduleSchema);
-  
+
 const mongoose = require('mongoose');
 const Order = require('./Order');
 
@@ -23,7 +13,11 @@ const recommendationSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-
+const scheduleChunkSchema = new mongoose.Schema({
+  startTime: { type: Date, required: true },
+  endTime: { type: Date, required: true },
+  quantity: { type: Number, required: true }
+});
 const scheduleSchema = new mongoose.Schema({
   orderID: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', required: true },
  orderNumber: { type: String }, // e.g., "1001"
@@ -46,7 +40,8 @@ const scheduleSchema = new mongoose.Schema({
   isManualApprovalRequired: { type: Boolean, default: false },
   isApproved: { type: Boolean, default: false },
   
-  recommendation: [recommendationSchema], // 👈 Embedded Recommendation here
+  recommendation: [recommendationSchema],   // 👈 Embedded Recommendation here
+  scheduleChunks:[scheduleChunkSchema],
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
