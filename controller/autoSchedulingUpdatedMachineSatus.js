@@ -136,12 +136,28 @@ const scheduleOrder = async (order, recommendations, machines) => {
 
   for (let stageIndex = 0; stageIndex < bom.stages.length; stageIndex++) {
     const stage = bom.stages[stageIndex];
-    const fullQuantity = order.quantity * stage.unitMaterialPerProduct;
-    const minQty = stage.minQtyForNextStage;
-    const timePerUnit = stage.hoursRequiredMinQty / minQty;
-    const totalHours = fullQuantity * timePerUnit;
-    const minQtyTime = minQty * timePerUnit;
+    // const fullQuantity = order.quantity * stage.unitMaterialPerProduct;
+    // const minQty = stage.minQtyForNextStage;
+    // const timePerUnit = stage.hoursRequiredMinQty / minQty;
+    // const totalHours = fullQuantity * timePerUnit;
+    // const minQtyTime = minQty * timePerUnit;
       
+    ////
+//     let previousStageEndTime = null;
+
+// if (stageIndex > 0) {
+//   const previousStage = bom.stages[stageIndex - 1];
+//   const prevSchedule = await Schedule.findOne({
+//     orderID: order._id,
+//     stageName: previousStage.stageName,
+//     status: 'Scheduled'
+//   }).sort({ scheduledEnd: -1 });
+
+//   if (prevSchedule) {
+//     previousStageEndTime = moment.utc(prevSchedule.scheduledEnd);
+//   }
+// }
+//
  
      
     
@@ -213,7 +229,12 @@ for (let machine of machines.filter(m => m.process === stage.stageName)) {
       }).save();
       return;
     }
-
+    const fullQuantity = order.quantity * availableMachine.unit_material_per_product;
+    const minQty = availableMachine.batch_size;
+    const timePerUnit = availableMachine.time_per_product; // or time_per_batch / batch_size if you have batch-level time
+    
+    const totalHours = fullQuantity * timePerUnit;
+    const minQtyTime = minQty * timePerUnit;
 
     const machineStart = moment.utc(availableMachine.startTime, 'HH:mm');
     const machineEnd = moment.utc(availableMachine.endTime, 'HH:mm');
